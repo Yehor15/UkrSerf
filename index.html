@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<title>УкрСерф</title>
+<style>
+  body {
+    margin: 0;
+    background: #87ceeb; /* небо */
+    overflow: hidden;
+  }
+  #gameCanvas {
+    display: block;
+    margin: 0 auto;
+    background: linear-gradient(to bottom, #228B22 0%, #006400 100%); /* зелена земля */
+    border-left: 5px solid purple; /* фіолетові боки */
+    border-right: 5px solid purple;
+  }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameOver = false;
+let score = 0;
+let speed = 2;
+
+const player = {
+  width: 30,
+  height: 30,
+  x: canvas.width / 2 - 15,
+  y: canvas.height - 50,
+  color: 'black',
+  dx: 0,
+};
+
+// Відступи для будинків — по 50 пікселів з кожного боку (5 пікселів бордюр + 40 будинки + 5 проміжок)
+const leftBuildingEdge = 5 + 40 + 5;
+const rightBuildingEdge = canvas.width - (5 + 40 + 5) - 30; // мінус ширина перешкоди 30
+
+const obstacles = [];
+
+function createObstacle() {
+  const width = 30;
+  const height = 30;
+  // Випадковий x в межах між будинками, щоб не на будинках
+  const x = Math.random() * (rightBuildingEdge - leftBuildingEdge) + leftBuildingEdge;
+  const y = -height;
+  obstacles.push({ x, y, width, height, color: 'red' });
+}
+
+function update() {
+  if (gameOver) {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '40px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Гра закінчена!', canvas.width / 2, canvas.height / 2 - 20);
+    ctx.font = '20px Arial';
+    ctx.fillText('Натисни Enter для перезапуску', canvas.width / 2, canvas.height / 2 + 20);
+    return;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Малюємо будинки по боках (сірі з вікнами)
+  for (let i = 0; i < canvas.height; i += 80) {
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(5 + 5, i, 40, 70);
+    ctx.fillRect(canvas.width - 50 - 5, i, 40, 70);
+
+    ctx.fillStyle = '#FFFF99';
+    for (let wx = 10; wx <= 30; wx += 20) {
+      for (let wy = i + 10; wy <= i + 50; wy += 20) {
+        ctx.fillRect(5 + wx, wy, 10, 10);
+        ctx.fillRect(canvas.width - 50 - 5 + wx, wy, 10, 10);
+      }
+    }
+  }
+
+  // Малюємо фіолетові боки
+  ctx.fillStyle = 'purple';
+  ctx.fillRect(0, 0, 5, canvas.height);
+  ctx.fillRect(canvas.width - 5, 0, 5, canvas.height);
+
+  // Малюємо гравця
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+
+  // Оновлюємо і малюємо перешкоди
+  obstacles.forEach((obs, i) => {
+    obs.y += speed;
+    ctx.fillStyle = obs.color;
+    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+    if (
+      player.x < obs.x + obs.width &&
+      player.x + player.width > obs.x &&
+      player.y < obs.y + obs.height &&
+      player.y + player.height > obs.y
+    ) {
+      gameOver = true;
+    }
+
+    if (obs.y > canvas.height) {
+      obstacles.splice(i, 1);
+      score++;
+      if (score % 5 === 0) speed += 0.5;
+    }
+  });
+
+  // Малюємо табло з чорним фоном зверху зліва
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(5, 5, 140, 30);
+  ctx.fillStyle = 'white';
+  ctx.font = '20px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Пройдено: ${score}`, 10, 27);
+
+  // Оновлення позиції гравця
+  player.x += player.dx;
+
+  // Обмеження по боках
+  if (player.x < 5) player.x = 5;
+  if (player.x + player.width > canvas.width - 5) player.x = canvas.width - 5 - player.width;
+
+  requestAnimationFrame(update);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') player.dx = -7;
+  if (e.key === 'ArrowRight') player.dx = 7;
+  if (gameOver && e.key === 'Enter') resetGame();
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') player.dx = 0;
+});
+
+function resetGame() {
+  gameOver = false;
+  score = 0;
+  speed = 2;
+  obstacles.length = 0;
+  player.x = canvas.width / 2 - player.width / 2;
+  player.y = canvas.height - 50;
+  update();
+}
+
+setInterval(() => {
+  if (!gameOver) createObstacle();
+}, 1500);
+
+update();
+</script>
+</body>
+</html>
